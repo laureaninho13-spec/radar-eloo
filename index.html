@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Radar ELO</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a1730">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Radar ELO">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script>try { if (localStorage.getItem('elo_s') || location.hash.indexOf('acesso=') > -1) document.documentElement.className = 'auto'; } catch (e) {}</script>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#050b18}
+body{min-height:100vh;min-height:100dvh;display:grid;place-items:center;color:#e4ecf6;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:radial-gradient(ellipse at 50% 40%,#10254a 0%,#0a1730 52%,#050b18 100%);
+  padding:max(20px,env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
+main{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+main img{width:96px;height:96px;border-radius:22px;box-shadow:0 14px 30px -12px #000}
+h1{margin:0;font-size:26px;font-weight:700;letter-spacing:.01em}
+h1 b{color:#7fd4ff}
+p.sub{margin:-8px 0 0;color:#8a9ab0;font-size:14.5px}
+form{width:100%;display:flex;flex-direction:column;gap:12px}
+input[type=password]{width:100%;font:inherit;font-size:17px;color:#fff;background:rgba(10,23,48,.8);border:1px solid rgba(127,212,255,.35);border-radius:12px;padding:14px 16px}
+input[type=password]:focus-visible{outline:3px solid #7fd4ff;outline-offset:2px}
+label{display:flex;align-items:center;gap:10px;justify-content:center;font-size:14.5px;color:#b8c6d8}
+label input{width:18px;height:18px;accent-color:#7fd4ff}
+button{font:inherit;font-size:17px;font-weight:700;color:#0a1730;background:#7fd4ff;border:0;border-radius:12px;padding:14px;cursor:pointer}
+button:hover{background:#a6e3ff}
+button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+button[disabled]{opacity:.6;cursor:wait}
+#msg{min-height:22px;margin:0;font-size:15px;color:#ff9e90}
+#prog{margin:0;font-size:14px;color:#8a9ab0}
+.rodape{margin-top:6px;font-size:12.5px;color:#5d6d84}
+.nota{margin:0;font-size:13.5px;color:#8a9ab0}
+/* com a senha já salva: só a tela de carregamento, sem piscar a tela de senha */
+.auto form,.auto p.sub,.auto .nota{display:none!important}
+.auto #prog{display:flex!important}
+#prog{align-items:center;gap:10px;justify-content:center}
+.auto #prog::before{content:"";width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(127,212,255,.3);border-top-color:#7fd4ff;animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.auto #prog::before{animation:none}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <img src="icon-192.png" alt="">
+  <h1>Radar <b>ELO</b></h1>
+  <p class="sub">Digite a senha de acesso</p>
+  <form id="f" autocomplete="on">
+    <input type="password" id="s" placeholder="Senha de acesso" autocomplete="current-password" autofocus aria-label="Senha de acesso">
+    <button type="submit" id="b">Entrar</button>
+    <p class="nota">A senha fica salva neste aparelho: é só digitar uma vez.</p>
+  </form>
+  <p id="msg" role="alert"></p>
+  <p id="prog" hidden>Abrindo o Radar…</p>
+  <p class="rodape">Uso interno · MP Válvulas</p>
+</main>
+<script>
+(function () {
+  'use strict';
+  var $ = function (i) { return document.getElementById(i); };
+  var f = $('f'), s = $('s'), b = $('b'), msg = $('msg'), prog = $('prog');
+  var temSW = 'serviceWorker' in navigator;
+  if (temSW) { try { navigator.serviceWorker.register('sw.js'); } catch (e) { temSW = false; } }
+
+  function guardado(k) { try { return localStorage.getItem(k) || sessionStorage.getItem(k); } catch (e) { return null; } }
+  function idb() { return new Promise(function (ok, no) { var r = indexedDB.open('elo', 1); r.onupgradeneeded = function () { r.result.createObjectStore('k'); }; r.onsuccess = function () { ok(r.result); }; r.onerror = function () { no(r.error); }; }); }
+  async function guardarChave(k) {
+    var db = await idb();
+    await new Promise(function (ok) { var t = db.transaction('k', 'readwrite'); t.objectStore('k').put(k, 'chave'); t.oncomplete = ok; t.onerror = ok; });
+    try { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage('chave-nova'); } catch (e) {}
+  }
+  function b64(s) { var x = atob(s), u = new Uint8Array(x.length); for (var i = 0; i < x.length; i++) u[i] = x.charCodeAt(i); return u; }
+
+  async function chaveDe(senha) {
+    var cf = await (await fetch('cofre.json', {cache: 'no-cache'})).json();
+    var km = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({name: 'PBKDF2', salt: b64(cf.salt), iterations: cf.it, hash: 'SHA-256'}, km, {name: 'AES-GCM', length: 256}, false, ['decrypt']);
+  }
+  async function abrirDoc(key) {
+    var r = await fetch('app.enc', {cache: 'no-cache'});
+    if (!r.ok) throw new Error('rede');
+    var buf = new Uint8Array(await r.arrayBuffer());
+    if (buf.length < 64 || String.fromCharCode(buf[0], buf[1], buf[2], buf[3]) !== 'ELO2') throw new Error('arquivo');
+    var iv = buf.slice(5, 17), ct = buf.slice(17), pt;
+    try { pt = await crypto.subtle.decrypt({name: 'AES-GCM', iv: iv}, key, ct); } catch (e) { throw new Error('senha'); }
+    return await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  }
+  // o "ajudante" do aparelho precisa estar ativo para desenhos e dados abrirem
+  function esperarAjudante() {
+    if (!temSW || navigator.serviceWorker.controller) return Promise.resolve();
+    return new Promise(function (ok) {
+      var t = setTimeout(ok, 6000);
+      navigator.serviceWorker.addEventListener('controllerchange', function () { clearTimeout(t); ok(); });
+    });
+  }
+
+  async function entrar(senha, auto) {
+    msg.textContent = ''; b.disabled = true; prog.hidden = false; prog.textContent = 'Abrindo o Radar…';
+    document.documentElement.className = 'auto';   // troca na hora para a tela de carregamento
+    try {
+      var key = await chaveDe(senha);
+      var html = await abrirDoc(key);
+      await guardarChave(key);
+      try { localStorage.setItem('elo_s', senha); } catch (e) {}
+      await esperarAjudante();
+      document.open(); document.write(html); document.close();
+    } catch (e) {
+      document.documentElement.className = '';
+      b.disabled = false; prog.hidden = true;
+      if (e && e.message === 'senha') {
+        try { localStorage.removeItem('elo_s'); sessionStorage.removeItem('elo_s'); } catch (x) {}
+        if (!auto) msg.textContent = 'Senha incorreta.';
+        s.value = ''; s.focus();
+      } else {
+        msg.textContent = 'Não consegui abrir agora. Confira a internet e tente de novo.';
+      }
+    }
+  }
+
+  f.addEventListener('submit', function (ev) { ev.preventDefault(); if (s.value) entrar(s.value, false); });
+
+  // link de acesso: ".../app/#acesso=<senha em base64>" entra sem digitar e guarda a senha no aparelho
+  var doLink = null;
+  try {
+    var m = /(?:^#|&)acesso=([^&]+)/.exec(location.hash);
+    if (m) { doLink = decodeURIComponent(escape(atob(decodeURIComponent(m[1])))); history.replaceState(null, '', location.pathname + location.search); }
+  } catch (e) { doLink = null; }
+
+  var salva = doLink || guardado('elo_s');
+  if (salva) entrar(salva, !doLink);
+})();
+</script>
+</body>
+</html>
