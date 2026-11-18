@@ -65,7 +65,8 @@
   }
 
   function mapErr(e) {
-    if (e && e.code === 'permission-denied') { var x = new Error(e.message); x.code = 'invalid_argument'; throw x; }
+    // sem login de marcação = só consulta; com login, a recusa é de área (as regras limitam cada um à sua parte)
+    if (e && e.code === 'permission-denied') { var x = new Error(e.message); x.code = editor ? 'area' : 'invalid_argument'; throw x; }
     throw e;
   }
 
