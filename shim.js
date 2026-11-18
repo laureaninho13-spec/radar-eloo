@@ -244,4 +244,18 @@
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montarEntrar); else montarEntrar();
+
+  /* Primeira abertura num aparelho: se o Radar abriu antes de o ajudante (que desembaralha desenhos e dados)
+     assumir a página, recarrega uma vez quando ele ficar pronto. Sem isso, desenhos e normas não aparecem. */
+  try {
+    if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
+      var recarregar = function () {
+        try { if (sessionStorage.getItem('elo_rl')) return; sessionStorage.setItem('elo_rl', '1'); } catch (e) { return; }
+        location.reload();
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', recarregar);
+      // ajudante já ativo mas página sem ele (ex.: recarga forçada): uma recarga normal resolve
+      navigator.serviceWorker.ready.then(function () { setTimeout(function () { if (!navigator.serviceWorker.controller) recarregar(); }, 800); });
+    }
+  } catch (e) {}
 })();
