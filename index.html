@@ -117,6 +117,8 @@ button[disabled]{opacity:.6;cursor:wait}
       b.disabled = false; prog.hidden = true;
       if (e && e.message === 'senha') {
         try { localStorage.removeItem('elo_s'); sessionStorage.removeItem('elo_s'); } catch (x) {}
+        // senha guardada não vale mais: apaga também a chave e o login guardados no aparelho
+        if (auto) { try { ['elo_eu','elo_es'].forEach(function (n) { localStorage.removeItem(n); sessionStorage.removeItem(n); }); indexedDB.deleteDatabase('elo'); indexedDB.deleteDatabase('firebaseLocalStorageDb'); } catch (x) {} }
         if (!auto) msg.textContent = 'Senha incorreta.';
         s.value = ''; s.focus();
       } else {
