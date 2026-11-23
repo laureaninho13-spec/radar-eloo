@@ -1,6 +1,6 @@
 /* Radar ELO: guarda o aplicativo no aparelho (abre rápido e sem internet, com a última leitura)
    e desembaralha, na hora, os arquivos protegidos (desenhos, normas, dados) com a chave do aparelho. */
-const V = 'elo-202611231648';
+const V = 'elo-202611231929';
 const SHELL = ['./', 'index.html', 'shim.js', 'config.js', 'cofre.json', 'lista.json', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 const EXTERNOS = ['www.gstatic.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const TIPOS = {webp: 'image/webp', png: 'image/png', jpg: 'image/jpeg', json: 'application/json', pdf: 'application/pdf', html: 'text/html; charset=utf-8', txt: 'text/plain; charset=utf-8'};
