@@ -1,6 +1,6 @@
 /* Radar ELO: guarda o aplicativo no aparelho (abre rápido e sem internet, com a última leitura)
    e desembaralha, na hora, os arquivos protegidos (desenhos, normas, dados) com a chave do aparelho. */
-const V = 'elo-202611251915';
+const V = 'elo-202611251935';
 const SHELL = ['./', 'index.html', 'shim.js', 'config.js', 'cofre.json', 'lista.json', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 const EXTERNOS = ['www.gstatic.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const TIPOS = {webp: 'image/webp', png: 'image/png', jpg: 'image/jpeg', json: 'application/json', pdf: 'application/pdf', html: 'text/html; charset=utf-8', txt: 'text/plain; charset=utf-8'};
@@ -64,8 +64,10 @@ async function redeFirst(req) {
   const c = await caches.open(V);
   try {
     const r = await fetch(req, {cache: 'no-cache'});
-    if (r && r.ok) c.put(req, r.clone());
-    return r;
+    if (r && r.ok) { c.put(req, r.clone()); return r; }
+    // GitHub fora do ar ou limitando acessos (429, 5xx): abre a versão guardada no aparelho
+    const hit = await c.match(req, {ignoreSearch: true}) || (req.mode === 'navigate' ? await c.match('./index.html', {ignoreSearch: true}) || await c.match('./', {ignoreSearch: true}) : null);
+    return hit || r;
   } catch (e) {
     const hit = await c.match(req, {ignoreSearch: true});
     if (hit) return hit;
